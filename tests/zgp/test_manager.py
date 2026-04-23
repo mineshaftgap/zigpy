@@ -1,9 +1,8 @@
 """Tests for Green Power Manager."""
 
 from __future__ import annotations
-from tests.async_mock import AsyncMock, MagicMock
 
-from tests.conftest import app
+from tests.async_mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -21,11 +20,6 @@ from zigpy.zgp.types import (
     SecurityLevel,
 )
 import zigpy.zgp.types as zgptypes
-
-
-@pytest.fixture
-def manager():
-    return GreenPowerManager(app)
 
 
 def _make_gp_notification_packet(
