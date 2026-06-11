@@ -11,9 +11,11 @@ This is the equivalent of zigbee-herdsman's `greenPower.ts`.
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import struct
 import time
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from zigpy.datastructures import Debouncer
@@ -97,6 +99,8 @@ class GreenPowerManager(EventBase):
         # (spec A.3.6.1.2): same (sourceID, frame_counter) key seen again
         # inside DEDUP_TIMEOUT_S is a retransmission from a different proxy.
         self._dedup_debouncer: Debouncer = Debouncer()
+        self._sidecar_path: Path | None = self._get_sidecar_path()
+        self._load_from_sidecar()
 
     def _create_task(self, coro: Any, name: str | None = None) -> asyncio.Task[Any]:
         """Create a task owned by the manager.
@@ -460,6 +464,8 @@ class GreenPowerManager(EventBase):
         # Notify listeners
         self.emit(DeviceJoined.event_type, DeviceJoined(device=device))
 
+        self._save_to_sidecar()
+
         LOGGER.info(
             "GP device commissioned: %r",
             device,
@@ -478,6 +484,8 @@ class GreenPowerManager(EventBase):
 
             # Notify listeners
             self.emit(DeviceLeft.event_type, DeviceLeft(device=device))
+
+            self._save_to_sidecar()
 
             LOGGER.info(
                 "GP device decommissioned: source_id=0x%08X",
@@ -999,3 +1007,52 @@ class GreenPowerManager(EventBase):
 
         """
         return [device.as_dict() for device in self._devices.values()]
+
+    def _get_sidecar_path(self) -> Path | None:
+        """Derive the GP devices JSON sidecar path from the app config."""
+        try:
+            db_path = self._application._config.get("database_path")
+            if db_path:
+                return Path(db_path).parent / "zgp_devices.json"
+        except Exception:  # noqa: BLE001
+            pass
+        return None
+
+    def _load_from_sidecar(self) -> None:
+        """Load commissioned GP devices from the JSON sidecar on startup."""
+        if self._sidecar_path is None or not self._sidecar_path.exists():
+            return
+        try:
+            devices_data = json.loads(self._sidecar_path.read_text())
+            self.load_devices(devices_data)
+            LOGGER.info(
+                "Restored %d GP device(s) from %s",
+                len(self._devices),
+                self._sidecar_path,
+            )
+        except Exception:  # noqa: BLE001
+            LOGGER.warning(
+                "Failed to load GP devices from %s",
+                self._sidecar_path,
+                exc_info=True,
+            )
+
+    def _save_to_sidecar(self) -> None:
+        """Persist all commissioned GP devices to the JSON sidecar."""
+        if self._sidecar_path is None:
+            return
+        try:
+            self._sidecar_path.write_text(
+                json.dumps(self.get_devices_data(), indent=2)
+            )
+            LOGGER.debug(
+                "Saved %d GP device(s) to %s",
+                len(self._devices),
+                self._sidecar_path,
+            )
+        except Exception:  # noqa: BLE001
+            LOGGER.warning(
+                "Failed to save GP devices to %s",
+                self._sidecar_path,
+                exc_info=True,
+            )
