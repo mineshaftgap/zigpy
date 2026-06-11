@@ -56,7 +56,7 @@ if sqlite3.sqlite_version_info < MIN_SQLITE_VERSION:
 
 LOGGER = logging.getLogger(__name__)
 
-DB_VERSION = 15
+DB_VERSION = 16
 DB_V = f"_v{DB_VERSION}"
 
 UNIX_EPOCH = datetime.fromtimestamp(0, tz=UTC)
@@ -715,6 +715,52 @@ class PersistingListener(zigpy.util.CatchingTaskMixin):
         )
         await self._db.commit()
 
+    def subscribe_to_green_power(self, green_power) -> None:
+        from zigpy.zgp.events import DeviceJoined, DeviceLeft
+
+        self._gp_unsubs = [
+            green_power.on_event(DeviceJoined.event_type, self._on_gp_device_joined),
+            green_power.on_event(DeviceLeft.event_type, self._on_gp_device_left),
+        ]
+
+    def unsubscribe_from_green_power(self) -> None:
+        for unsub in getattr(self, "_gp_unsubs", []):
+            unsub()
+        self._gp_unsubs = []
+
+    def _on_gp_device_joined(self, event) -> None:
+        self.enqueue("_save_gp_device", event.device)
+
+    def _on_gp_device_left(self, event) -> None:
+        self.enqueue("_remove_gp_device", event.device.source_id)
+
+    async def _save_gp_device(self, device) -> None:
+        d = device.as_dict()
+        q = f"""INSERT INTO gp_devices{DB_V} VALUES (
+            :source_id, :device_id, :security_key, :security_level,
+            :security_key_type, :frame_counter, :manufacturer_id, :model_id,
+            :gpd_commands, :server_clusters, :client_clusters,
+            :mac_seq_num_capability, :rx_on_capability, :fixed_location, :last_seen
+        ) ON CONFLICT (source_id) DO UPDATE SET
+            frame_counter=excluded.frame_counter,
+            last_seen=excluded.last_seen"""
+        await self.execute(q, {
+            **d,
+            "gpd_commands": json.dumps(d["gpd_commands"]),
+            "server_clusters": json.dumps(d["server_clusters"]),
+            "client_clusters": json.dumps(d["client_clusters"]),
+        })
+        await self._db.commit()
+
+    async def _remove_gp_device(self, source_id: int) -> None:
+        await self.execute(
+            f"DELETE FROM gp_devices{DB_V} WHERE source_id=?", (source_id,)
+        )
+        await self.execute(
+            f"DELETE FROM gp_proxy_table{DB_V} WHERE source_id=?", (source_id,)
+        )
+        await self._db.commit()
+
     def network_backup_created(self, backup: zigpy.backups.NetworkBackup) -> None:
         self.enqueue("_network_backup_created", json.dumps(backup.as_dict()))
 
@@ -792,6 +838,8 @@ class PersistingListener(zigpy.util.CatchingTaskMixin):
         await self._load_routes()
         await self._load_network_backups()
         await self._load_ota_query_cache()
+        await self._load_gp_devices()
+        await self._load_gp_proxy_table()
 
         await self._db.commit()
 
@@ -1140,6 +1188,54 @@ class PersistingListener(zigpy.util.CatchingTaskMixin):
                         cluster.last_query_cmd = cmd
                         break
 
+    async def _load_gp_devices(self) -> None:
+        if not hasattr(self._application, "green_power"):
+            return
+        async with self.execute(
+            f"SELECT source_id, device_id, security_key, security_level, "
+            f"security_key_type, frame_counter, manufacturer_id, model_id, "
+            f"gpd_commands, server_clusters, client_clusters, "
+            f"mac_seq_num_capability, rx_on_capability, fixed_location, last_seen "
+            f"FROM gp_devices{DB_V}"
+        ) as cursor:
+            rows = await cursor.fetchall()
+        devices_data = [
+            {
+                "source_id": r[0], "device_id": r[1], "security_key": r[2],
+                "security_level": r[3], "security_key_type": r[4],
+                "frame_counter": r[5], "manufacturer_id": r[6], "model_id": r[7],
+                "gpd_commands": json.loads(r[8]),
+                "server_clusters": json.loads(r[9]),
+                "client_clusters": json.loads(r[10]),
+                "mac_seq_num_capability": bool(r[11]),
+                "rx_on_capability": bool(r[12]),
+                "fixed_location": bool(r[13]),
+                "last_seen": r[14],
+            }
+            for r in rows
+        ]
+        self._application.green_power.load_devices(devices_data)
+        LOGGER.info("Restored %d GP device(s) from database", len(devices_data))
+
+    async def _load_gp_proxy_table(self) -> None:
+        if not hasattr(self._application, "green_power"):
+            return
+        from zigpy.zgp.types import CommunicationMode, SecurityLevel
+
+        async with self.execute(
+            f"SELECT source_id, proxy_nwk, communication_mode, security_level, "
+            f"frame_counter FROM gp_proxy_table{DB_V}"
+        ) as cursor:
+            rows = await cursor.fetchall()
+        for r in rows:
+            self._application.green_power.proxy_table.add_or_update(
+                source_id=r[0], proxy_nwk=r[1],
+                communication_mode=CommunicationMode(r[2]),
+                security_level=SecurityLevel(r[3]),
+                frame_counter=r[4],
+            )
+        LOGGER.debug("Restored %d GP proxy table entries from database", len(rows))
+
     async def _register_device_listeners(self) -> None:
         for dev in self._application.devices.values():
             dev.add_context_listener(self)
@@ -1232,6 +1328,7 @@ class PersistingListener(zigpy.util.CatchingTaskMixin):
                 (self._migrate_to_v13, 13),
                 (self._migrate_to_v14, 14),
                 (self._migrate_to_v15, 15),
+                (self._migrate_to_v16, 16),
             ]:
                 if db_version >= min(to_db_version, DB_VERSION):
                     continue
@@ -1697,3 +1794,23 @@ class PersistingListener(zigpy.util.CatchingTaskMixin):
             }
         )
         # ota_query_cache_v15 is new and starts empty
+
+    async def _migrate_to_v16(self) -> None:
+        """Schema v16 adds gp_devices and gp_proxy_table for Green Power persistence."""
+        await self._migrate_tables(
+            {
+                "devices_v15": "devices_v16",
+                "endpoints_v15": "endpoints_v16",
+                "neighbors_v15": "neighbors_v16",
+                "routes_v15": "routes_v16",
+                "node_descriptors_v15": "node_descriptors_v16",
+                "groups_v15": "groups_v16",
+                "group_members_v15": "group_members_v16",
+                "relays_v15": "relays_v16",
+                "network_backups_v15": "network_backups_v16",
+                "clusters_v15": "clusters_v16",
+                "attributes_cache_v15": "attributes_cache_v16",
+                "ota_query_cache_v15": "ota_query_cache_v16",
+            }
+        )
+        # gp_devices_v16 and gp_proxy_table_v16 are new — start empty

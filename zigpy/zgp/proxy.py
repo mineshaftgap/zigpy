@@ -41,6 +41,29 @@ class GPProxyTableEntry:
         """Update last_seen timestamp."""
         self.last_seen = datetime.now(UTC)
 
+    def as_dict(self) -> dict:
+        return {
+            "source_id": self.source_id,
+            "proxy_nwk": self.proxy_nwk,
+            "communication_mode": int(self.communication_mode),
+            "security_level": int(self.security_level),
+            "frame_counter": self.frame_counter,
+            "first_seen": self.first_seen.isoformat(),
+            "last_seen": self.last_seen.isoformat(),
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "GPProxyTableEntry":
+        return cls(
+            source_id=data["source_id"],
+            proxy_nwk=data["proxy_nwk"],
+            communication_mode=CommunicationMode(data.get("communication_mode", 0)),
+            security_level=SecurityLevel(data.get("security_level", 0)),
+            frame_counter=data.get("frame_counter", 0),
+            first_seen=datetime.fromisoformat(data["first_seen"]),
+            last_seen=datetime.fromisoformat(data["last_seen"]),
+        )
+
 
 class GPProxyTable:
     """Manages the coordinator's view of GP Proxy forwarding state.
