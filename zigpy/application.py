@@ -179,11 +179,14 @@ class ControllerApplication(zigpy.util.ListenableMixin, abc.ABC):
         self.groups.add_listener(self._dblistener)
         self.backups.add_listener(self._dblistener)
         self.topology.add_listener(self._dblistener)
+        if hasattr(self, "green_power"):
+            self._dblistener.subscribe_to_green_power(self.green_power)
 
     def _remove_db_listeners(self):
         if self._dblistener is None:
             return
 
+        self._dblistener.unsubscribe_from_green_power()
         self.topology.remove_listener(self._dblistener)
         self.backups.remove_listener(self._dblistener)
         self.groups.remove_listener(self._dblistener)
@@ -320,8 +323,6 @@ class ControllerApplication(zigpy.util.ListenableMixin, abc.ABC):
                 ],
                 interval=self._config[conf.CONF_OTA][conf.CONF_OTA_BROADCAST_INTERVAL],
             )
-
-        await self.green_power.startup()
 
     async def startup(self, *, auto_form: bool = False) -> None:
         """Starts a network, optionally forming one with random settings if necessary."""
