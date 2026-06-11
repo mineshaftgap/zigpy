@@ -68,7 +68,16 @@ def get_green_power_quirk(
     gpd: "GPDevice",
 ) -> type[CustomGreenPowerDevice] | None:
     """Return the first matching GP quirk class for *gpd*, or ``None``."""
-    return next((cls for cls in _GP_REGISTRY if cls.match(gpd)), None)
+    import logging as _logging
+    _log = _logging.getLogger(__name__)
+    for cls in _GP_REGISTRY:
+        try:
+            if cls.match(gpd):
+                return cls
+        except AttributeError as exc:
+            # Quirk uses an API not present on this GPDevice (e.g. green_power_data).
+            _log.warning("Quirk %s.match() raised AttributeError: %s - skipping", cls.__name__, exc)
+    return None
 
 
 def get_device(
