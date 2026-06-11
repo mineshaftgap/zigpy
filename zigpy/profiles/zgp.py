@@ -4,6 +4,9 @@ import zigpy.types as t
 
 PROFILE_ID = 41440
 
+# Vocabulary alias - konistehrad imports GREENPOWER_CLUSTER_ID from this module.
+GREENPOWER_CLUSTER_ID = 0x0021
+
 
 class DeviceType(t.enum16):
     PROXY = 0x0060

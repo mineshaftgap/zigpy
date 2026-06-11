@@ -27,11 +27,48 @@ from zigpy.zdo import ZDO
 
 if typing.TYPE_CHECKING:
     from zigpy.application import ControllerApplication
+    from zigpy.zgp.device import GPDevice
 
 _LOGGER = logging.getLogger(__name__)
 
 DEVICE_REGISTRY = DeviceRegistry()
 _uninitialized_device_message_handlers = []
+
+# ---------------------------------------------------------------------------
+# Green Power quirk registry (Strategy 2 - ZHA-layer dispatch, sec.D)
+# ---------------------------------------------------------------------------
+
+_GP_REGISTRY: list[type[CustomGreenPowerDevice]] = []
+
+
+class CustomGreenPowerDevice:
+    """Base class for Green Power Device quirks.
+
+    Subclass with ``priority=N`` (lower = higher precedence).  Override
+    ``match()`` and set ``manufacturer``, ``model``, and
+    ``device_automation_triggers`` as class attributes.
+    """
+
+    manufacturer: str | None = None
+    model: str | None = None
+    device_automation_triggers: dict = {}
+
+    def __init_subclass__(cls, priority: int, **kwargs) -> None:
+        super().__init_subclass__(**kwargs)
+        cls.priority = priority
+        _GP_REGISTRY.append(cls)
+        _GP_REGISTRY.sort(key=lambda c: c.priority)
+
+    @classmethod
+    def match(cls, gpd: "GPDevice") -> bool:
+        return False
+
+
+def get_green_power_quirk(
+    gpd: "GPDevice",
+) -> type[CustomGreenPowerDevice] | None:
+    """Return the first matching GP quirk class for *gpd*, or ``None``."""
+    return next((cls for cls in _GP_REGISTRY if cls.match(gpd)), None)
 
 
 def get_device(

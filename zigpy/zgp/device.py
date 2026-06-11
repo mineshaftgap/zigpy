@@ -220,3 +220,7 @@ class GPDevice:
             f" security={self.security_level.name}"
             f">"
         )
+
+
+# Vocabulary alias - konistehrad's fork calls this class GreenPowerDevice.
+GreenPowerDevice = GPDevice
