@@ -464,7 +464,7 @@ class GreenPowerManager(EventBase):
         # Notify listeners
         self.emit(DeviceJoined.event_type, DeviceJoined(device=device))
 
-        self._save_to_sidecar()
+        await self._save_to_sidecar()
 
         LOGGER.info(
             "GP device commissioned: %r",
@@ -485,7 +485,7 @@ class GreenPowerManager(EventBase):
             # Notify listeners
             self.emit(DeviceLeft.event_type, DeviceLeft(device=device))
 
-            self._save_to_sidecar()
+            await self._save_to_sidecar()
 
             LOGGER.info(
                 "GP device decommissioned: source_id=0x%08X",
@@ -1037,14 +1037,13 @@ class GreenPowerManager(EventBase):
                 exc_info=True,
             )
 
-    def _save_to_sidecar(self) -> None:
+    async def _save_to_sidecar(self) -> None:
         """Persist all commissioned GP devices to the JSON sidecar."""
         if self._sidecar_path is None:
             return
         try:
-            self._sidecar_path.write_text(
-                json.dumps(self.get_devices_data(), indent=2)
-            )
+            data = json.dumps(self.get_devices_data(), indent=2)
+            await asyncio.to_thread(self._sidecar_path.write_text, data)
             LOGGER.debug(
                 "Saved %d GP device(s) to %s",
                 len(self._devices),
