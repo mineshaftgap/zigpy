@@ -100,7 +100,6 @@ class GreenPowerManager(EventBase):
         # inside DEDUP_TIMEOUT_S is a retransmission from a different proxy.
         self._dedup_debouncer: Debouncer = Debouncer()
         self._sidecar_path: Path | None = self._get_sidecar_path()
-        self._load_from_sidecar()
 
     def _create_task(self, coro: Any, name: str | None = None) -> asyncio.Task[Any]:
         """Create a task owned by the manager.
@@ -1017,6 +1016,10 @@ class GreenPowerManager(EventBase):
         except Exception:  # noqa: BLE001
             pass
         return None
+
+    async def startup(self) -> None:
+        """Async startup hook - load persisted GP devices off the event loop."""
+        await asyncio.to_thread(self._load_from_sidecar)
 
     def _load_from_sidecar(self) -> None:
         """Load commissioned GP devices from the JSON sidecar on startup."""
