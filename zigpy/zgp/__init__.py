@@ -1,3 +1,5 @@
+import enum
+
 from .crypto import (  # noqa: F401
     build_nonce,
     decrypt_payload,
@@ -41,6 +43,27 @@ GreenPowerDeviceData = GPDevice  # noqa: F811
 # security aliases
 GPSecurityLevel = SecurityLevel  # noqa: F811
 GPSecurityKeyType = SecurityKeyType  # noqa: F811
+
+
+class GPDeviceType(enum.IntEnum):
+    """Green Power Device Type IDs (Zigbee GP spec table A.3)."""
+    SWITCH_1_STATE = 0x00
+    SWITCH_2_STATE = 0x01
+    SWITCH_ON_OFF = 0x02
+    SWITCH_LEVEL_CONTROL = 0x03
+    SIMPLE_SENSOR = 0x04
+    SWITCH_1_STATE_ADVANCED = 0x05
+    SWITCH_2_STATE_ADVANCED = 0x06
+    COLOR_DIMMER_SWITCH = 0x10
+    LIGHT_SENSOR = 0x11
+    OCCUPANCY_SENSOR = 0x12
+    DOOR_LOCK_CONTROLLER = 0x20
+    TEMPERATURE_SENSOR = 0x30
+    PRESSURE_SENSOR = 0x31
+    FLOW_SENSOR = 0x32
+    INDOOR_ENVIRONMENT_SENSOR = 0x33
+    MANUFACTURER_SPECIFIC = 0xFE
+    UNDEFINED = 0xFF
 
 # cluster-id alias  (konistehrad imports GREENPOWER_CLUSTER_ID from zigpy.profiles.zgp;
 #                    also expose it here for direct zigpy.zgp imports)
