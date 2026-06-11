@@ -165,3 +165,27 @@ def test_get_proxies_for_nonexistent_device():
 def test_get_devices_for_nonexistent_proxy():
     table = GPProxyTable()
     assert table.get_devices_for_proxy(0x9999) == []
+
+
+def test_gp_proxy_table_entry_serialization():
+    from datetime import UTC, datetime
+
+    entry = GPProxyTableEntry(
+        source_id=0x12345678,
+        proxy_nwk=0xABCD,
+        communication_mode=CommunicationMode.UnicastLightweight,
+        security_level=SecurityLevel.NoSecurity,
+        frame_counter=42,
+        first_seen=datetime(2026, 6, 11, 12, 0, 0, tzinfo=UTC),
+        last_seen=datetime(2026, 6, 11, 13, 0, 0, tzinfo=UTC),
+    )
+    d = entry.as_dict()
+    entry2 = GPProxyTableEntry.from_dict(d)
+
+    assert entry2.source_id == entry.source_id
+    assert entry2.proxy_nwk == entry.proxy_nwk
+    assert entry2.communication_mode == entry.communication_mode
+    assert entry2.security_level == entry.security_level
+    assert entry2.frame_counter == entry.frame_counter
+    assert entry2.first_seen == entry.first_seen
+    assert entry2.last_seen == entry.last_seen
