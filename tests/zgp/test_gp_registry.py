@@ -87,25 +87,7 @@ class TestVocabularyAliases:
 
         assert GreenPowerDevice is GPDevice
 
-    def test_greenpower_device_data_alias(self):
-        from zigpy.zgp import GreenPowerDeviceData
-        from zigpy.zgp.device import GPDevice
-
-        assert GreenPowerDeviceData is GPDevice
-
-    def test_security_aliases(self):
-        from zigpy.zgp import GPSecurityKeyType, GPSecurityLevel
-        from zigpy.zgp.types import SecurityKeyType, SecurityLevel
-
-        assert GPSecurityLevel is SecurityLevel
-        assert GPSecurityKeyType is SecurityKeyType
-
     def test_greenpower_cluster_id_in_profiles(self):
         from zigpy.profiles.zgp import GREENPOWER_CLUSTER_ID
 
         assert GREENPOWER_CLUSTER_ID == 0x0021
-
-    def test_greenpower_cluster_id_in_zgp(self):
-        from zigpy.zgp import GREENPOWER_CLUSTER_ID, GP_CLUSTER_ID
-
-        assert GREENPOWER_CLUSTER_ID == GP_CLUSTER_ID

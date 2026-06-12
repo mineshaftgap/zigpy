@@ -16,23 +16,10 @@ from .frame import (  # noqa: F401
     GPCommissioningPayload,
 )
 from .types import *  # noqa: F403, F401
-from .types import (  # noqa: F401
-    DEFAULT_GP_LINK_KEY,
-    GP_CLUSTER_ID,
-    GP_ENDPOINT,
-    GP_GROUP_ID,
-    SecurityKeyType,
-    SecurityLevel,
-)
 
 # Note: GreenPowerManager is not imported here to avoid circular imports
 # with zigpy.zcl.clusters.greenpower. Import it directly:
 #   from zigpy.zgp.manager import GreenPowerManager
-
-# Convenience aliases.
-GreenPowerDeviceData = GPDevice  # noqa: F811
-GPSecurityLevel = SecurityLevel  # noqa: F811
-GPSecurityKeyType = SecurityKeyType  # noqa: F811
 
 
 class GPDeviceType(enum.IntEnum):
@@ -55,6 +42,3 @@ class GPDeviceType(enum.IntEnum):
     INDOOR_ENVIRONMENT_SENSOR = 0x33
     MANUFACTURER_SPECIFIC = 0xFE
     UNDEFINED = 0xFF
-
-
-GREENPOWER_CLUSTER_ID = GP_CLUSTER_ID
