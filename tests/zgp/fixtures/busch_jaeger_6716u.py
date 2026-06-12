@@ -2,7 +2,7 @@
 
 Captured 2026-04-22 on a Silabs ZBT-1 (EZSP v13): top-left button held 10 s
 to commission, then normal button presses. Raw EZSP payloads pulled from the
-bellows debug log. See zigpy/zigpy#1814.
+bellows debug log.
 
 Pure data module - import the constants directly.
 """

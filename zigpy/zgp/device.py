@@ -222,5 +222,4 @@ class GPDevice:
         )
 
 
-# Vocabulary alias - konistehrad's fork calls this class GreenPowerDevice.
 GreenPowerDevice = GPDevice

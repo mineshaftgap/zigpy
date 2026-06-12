@@ -29,24 +29,15 @@ from .types import (  # noqa: F401
 # with zigpy.zcl.clusters.greenpower. Import it directly:
 #   from zigpy.zgp.manager import GreenPowerManager
 
-# ---------------------------------------------------------------------------
-# Vocabulary aliases - konistehrad/zgp names -> canonical nmingam/#1814 names
-# ---------------------------------------------------------------------------
-
-# device class
-# GreenPowerDevice is imported from .device above
-
-# konistehrad carries separate GreenPowerDeviceData ext-object; under Strategy 2
-# the GPDevice dataclass IS the data, so alias to GPDevice for import compat.
+# Convenience aliases.
 GreenPowerDeviceData = GPDevice  # noqa: F811
-
-# security aliases
 GPSecurityLevel = SecurityLevel  # noqa: F811
 GPSecurityKeyType = SecurityKeyType  # noqa: F811
 
 
 class GPDeviceType(enum.IntEnum):
     """Green Power Device Type IDs (Zigbee GP spec table A.3)."""
+
     SWITCH_1_STATE = 0x00
     SWITCH_2_STATE = 0x01
     SWITCH_ON_OFF = 0x02
@@ -65,6 +56,4 @@ class GPDeviceType(enum.IntEnum):
     MANUFACTURER_SPECIFIC = 0xFE
     UNDEFINED = 0xFF
 
-# cluster-id alias  (konistehrad imports GREENPOWER_CLUSTER_ID from zigpy.profiles.zgp;
-#                    also expose it here for direct zigpy.zgp imports)
 GREENPOWER_CLUSTER_ID = GP_CLUSTER_ID
