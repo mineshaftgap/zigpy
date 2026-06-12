@@ -34,9 +34,7 @@ _LOGGER = logging.getLogger(__name__)
 DEVICE_REGISTRY = DeviceRegistry()
 _uninitialized_device_message_handlers = []
 
-# ---------------------------------------------------------------------------
-# Green Power quirk registry (Strategy 2 - ZHA-layer dispatch, sec.D)
-# ---------------------------------------------------------------------------
+# Green Power quirk registry
 
 _GP_REGISTRY: list[type[CustomGreenPowerDevice]] = []
 
@@ -60,23 +58,25 @@ class CustomGreenPowerDevice:
         _GP_REGISTRY.sort(key=lambda c: c.priority)
 
     @classmethod
-    def match(cls, gpd: "GPDevice") -> bool:
+    def match(cls, gpd: GPDevice) -> bool:
         return False
 
 
 def get_green_power_quirk(
-    gpd: "GPDevice",
+    gpd: GPDevice,
 ) -> type[CustomGreenPowerDevice] | None:
     """Return the first matching GP quirk class for *gpd*, or ``None``."""
-    import logging as _logging
-    _log = _logging.getLogger(__name__)
     for cls in _GP_REGISTRY:
         try:
             if cls.match(gpd):
                 return cls
         except AttributeError as exc:
             # Quirk uses an API not present on this GPDevice (e.g. green_power_data).
-            _log.warning("Quirk %s.match() raised AttributeError: %s - skipping", cls.__name__, exc)
+            _LOGGER.warning(
+                "Quirk %s.match() raised AttributeError: %s - skipping",
+                cls.__name__,
+                exc,
+            )
     return None
 
 
