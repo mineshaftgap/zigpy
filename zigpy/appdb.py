@@ -742,7 +742,19 @@ class PersistingListener(zigpy.util.CatchingTaskMixin):
             :gpd_commands, :server_clusters, :client_clusters,
             :mac_seq_num_capability, :rx_on_capability, :fixed_location, :last_seen
         ) ON CONFLICT (source_id) DO UPDATE SET
+            device_id=excluded.device_id,
+            security_key=excluded.security_key,
+            security_level=excluded.security_level,
+            security_key_type=excluded.security_key_type,
             frame_counter=excluded.frame_counter,
+            manufacturer_id=excluded.manufacturer_id,
+            model_id=excluded.model_id,
+            gpd_commands=excluded.gpd_commands,
+            server_clusters=excluded.server_clusters,
+            client_clusters=excluded.client_clusters,
+            mac_seq_num_capability=excluded.mac_seq_num_capability,
+            rx_on_capability=excluded.rx_on_capability,
+            fixed_location=excluded.fixed_location,
             last_seen=excluded.last_seen"""
         await self.execute(
             q,
@@ -1204,23 +1216,39 @@ class PersistingListener(zigpy.util.CatchingTaskMixin):
             rows = await cursor.fetchall()
         devices_data = [
             {
-                "source_id": r[0],
-                "device_id": r[1],
-                "security_key": r[2],
-                "security_level": r[3],
-                "security_key_type": r[4],
-                "frame_counter": r[5],
-                "manufacturer_id": r[6],
-                "model_id": r[7],
-                "gpd_commands": json.loads(r[8]),
-                "server_clusters": json.loads(r[9]),
-                "client_clusters": json.loads(r[10]),
-                "mac_seq_num_capability": bool(r[11]),
-                "rx_on_capability": bool(r[12]),
-                "fixed_location": bool(r[13]),
-                "last_seen": r[14],
+                "source_id": source_id,
+                "device_id": device_id,
+                "security_key": security_key,
+                "security_level": security_level,
+                "security_key_type": security_key_type,
+                "frame_counter": frame_counter,
+                "manufacturer_id": manufacturer_id,
+                "model_id": model_id,
+                "gpd_commands": json.loads(gpd_commands),
+                "server_clusters": json.loads(server_clusters),
+                "client_clusters": json.loads(client_clusters),
+                "mac_seq_num_capability": bool(mac_seq_num_capability),
+                "rx_on_capability": bool(rx_on_capability),
+                "fixed_location": bool(fixed_location),
+                "last_seen": last_seen,
             }
-            for r in rows
+            for (
+                source_id,
+                device_id,
+                security_key,
+                security_level,
+                security_key_type,
+                frame_counter,
+                manufacturer_id,
+                model_id,
+                gpd_commands,
+                server_clusters,
+                client_clusters,
+                mac_seq_num_capability,
+                rx_on_capability,
+                fixed_location,
+                last_seen,
+            ) in rows
         ]
         self._application.green_power.load_devices(devices_data)
         LOGGER.info("Restored %d GP device(s) from database", len(devices_data))
@@ -1235,13 +1263,13 @@ class PersistingListener(zigpy.util.CatchingTaskMixin):
             f"frame_counter FROM gp_proxy_table{DB_V}"
         ) as cursor:
             rows = await cursor.fetchall()
-        for r in rows:
+        for source_id, proxy_nwk, communication_mode, security_level, frame_counter in rows:
             self._application.green_power.proxy_table.add_or_update(
-                source_id=r[0],
-                proxy_nwk=r[1],
-                communication_mode=CommunicationMode(r[2]),
-                security_level=SecurityLevel(r[3]),
-                frame_counter=r[4],
+                source_id=source_id,
+                proxy_nwk=proxy_nwk,
+                communication_mode=CommunicationMode(communication_mode),
+                security_level=SecurityLevel(security_level),
+                frame_counter=frame_counter,
             )
         LOGGER.debug("Restored %d GP proxy table entries from database", len(rows))
 

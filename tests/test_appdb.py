@@ -1884,3 +1884,33 @@ async def test_gp_device_decommission(tmp_path):
     app2 = await make_app_with_db(db)
     assert SOURCE_ID not in app2.green_power.devices
     await app2.shutdown()
+
+
+async def test_gp_device_recommission_updates_security_key(tmp_path):
+    """Re-commissioning (second DeviceJoined) must update the stored security key."""
+    from zigpy.zgp.device import GPDevice
+    from zigpy.zgp.events import DeviceJoined
+
+    SOURCE_ID = 0x0040F4E4
+    OLD_KEY = bytes(range(16))
+    NEW_KEY = bytes(range(16, 32))
+
+    db = tmp_path / "test.db"
+    app = await make_app_with_db(db)
+
+    device = GPDevice(source_id=SOURCE_ID, device_id=2, security_key=t.KeyData(OLD_KEY))
+    app.green_power.emit(DeviceJoined.event_type, DeviceJoined(device=device))
+    await app.shutdown()
+
+    # Re-commission with a different key (same source_id).
+    app2 = await make_app_with_db(db)
+    recommissioned = GPDevice(
+        source_id=SOURCE_ID, device_id=2, security_key=t.KeyData(NEW_KEY)
+    )
+    app2.green_power.emit(DeviceJoined.event_type, DeviceJoined(device=recommissioned))
+    await app2.shutdown()
+
+    app3 = await make_app_with_db(db)
+    restored = app3.green_power.devices[SOURCE_ID]
+    assert bytes(restored.security_key) == NEW_KEY
+    await app3.shutdown()
