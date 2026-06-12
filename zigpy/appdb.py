@@ -744,12 +744,15 @@ class PersistingListener(zigpy.util.CatchingTaskMixin):
         ) ON CONFLICT (source_id) DO UPDATE SET
             frame_counter=excluded.frame_counter,
             last_seen=excluded.last_seen"""
-        await self.execute(q, {
-            **d,
-            "gpd_commands": json.dumps(d["gpd_commands"]),
-            "server_clusters": json.dumps(d["server_clusters"]),
-            "client_clusters": json.dumps(d["client_clusters"]),
-        })
+        await self.execute(
+            q,
+            {
+                **d,
+                "gpd_commands": json.dumps(d["gpd_commands"]),
+                "server_clusters": json.dumps(d["server_clusters"]),
+                "client_clusters": json.dumps(d["client_clusters"]),
+            },
+        )
         await self._db.commit()
 
     async def _remove_gp_device(self, source_id: int) -> None:
@@ -1201,9 +1204,14 @@ class PersistingListener(zigpy.util.CatchingTaskMixin):
             rows = await cursor.fetchall()
         devices_data = [
             {
-                "source_id": r[0], "device_id": r[1], "security_key": r[2],
-                "security_level": r[3], "security_key_type": r[4],
-                "frame_counter": r[5], "manufacturer_id": r[6], "model_id": r[7],
+                "source_id": r[0],
+                "device_id": r[1],
+                "security_key": r[2],
+                "security_level": r[3],
+                "security_key_type": r[4],
+                "frame_counter": r[5],
+                "manufacturer_id": r[6],
+                "model_id": r[7],
                 "gpd_commands": json.loads(r[8]),
                 "server_clusters": json.loads(r[9]),
                 "client_clusters": json.loads(r[10]),
@@ -1229,7 +1237,8 @@ class PersistingListener(zigpy.util.CatchingTaskMixin):
             rows = await cursor.fetchall()
         for r in rows:
             self._application.green_power.proxy_table.add_or_update(
-                source_id=r[0], proxy_nwk=r[1],
+                source_id=r[0],
+                proxy_nwk=r[1],
                 communication_mode=CommunicationMode(r[2]),
                 security_level=SecurityLevel(r[3]),
                 frame_counter=r[4],
