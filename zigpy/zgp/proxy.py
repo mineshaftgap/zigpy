@@ -53,7 +53,7 @@ class GPProxyTableEntry:
         }
 
     @classmethod
-    def from_dict(cls, data: dict) -> "GPProxyTableEntry":
+    def from_dict(cls, data: dict) -> GPProxyTableEntry:
         return cls(
             source_id=data["source_id"],
             proxy_nwk=data["proxy_nwk"],
